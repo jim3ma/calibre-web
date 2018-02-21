@@ -80,6 +80,7 @@ from redirect import redirect_back, is_safe_url
 
 from tornado import version as tornadoVersion
 from socket import error as SocketError
+from flask_dance.contrib.github import make_github_blueprint, github
 
 try:
     from urllib.parse import quote
@@ -217,6 +218,25 @@ mimetypes.add_type('image/vnd.djvu', '.djvu')
 app = (Flask(__name__))
 app.wsgi_app = ReverseProxied(app.wsgi_app)
 cache_buster.init_cache_busting(app)
+
+gh_client_id = ""
+gh_client_secret = ""
+if "OAUTH2_GITHUB_CLIENT_ID" in os.environ:
+    gh_client_id = os.environ["OAUTH2_GITHUB_CLIENT_ID"]
+if "OAUTH2_GITHUB_CLIENT_SECRET" in os.environ:
+    gh_client_secret = os.environ["OAUTH2_GITHUB_CLIENT_SECRET"]
+
+app.secret_key = "supersekrit"
+
+if "OAUTH2_SECRET_KEY" in os.environ:
+    app.secret_key = os.environ["OAUTH2_SECRET_KEY"]
+
+blueprint = make_github_blueprint(
+    client_id=gh_client_id,
+    client_secret=gh_client_secret,
+    redirect_to="login_via_github",
+)
+app.register_blueprint(blueprint, url_prefix="/login")
 
 gevent_server = None
 
@@ -2026,6 +2046,28 @@ def login():
 
     return render_title_template('login.html', title=_(u"login"), next_url=next_url,
                                  remote_login=config.config_remote_login)
+
+
+@app.route("/login/via/github")
+def login_via_github():
+    if not github.authorized:
+        return redirect(url_for("github.login"))
+    resp = github.get("/user")
+    if resp.ok:
+        info = resp.json()
+        user = ub.session.query(ub.User).filter(
+            func.lower(ub.User.email) == info['email'].strip().lower()).first()
+        if user:
+            login_user(user, remember=True)
+            flash(_(u"you are now logged in as: '%(nickname)s'", nickname=user.nickname), category="success")
+            return redirect(url_for("index"))
+        else:
+            # redirect to register page
+            flash(_(u"Your github email '%(email)s' is not registered Calibre Web, please register fisrt", email=info['email']), category="success")
+            return redirect(url_for("register") + "?new_email=" + info['email'])
+
+    flash(_(u"Can not fetch user information from GitHub, please try it later"), category="error")
+    return redirect(url_for("login"))
 
 
 @app.route('/logout')
