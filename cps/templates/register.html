@@ -19,4 +19,19 @@
     <div class="alert alert-danger">{{error}}</div>
   </div>
   {% endif %}
+    <script type="text/javascript">
+        function GetQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return decodeURI(r[2]);
+            return null;
+        }
+
+        var email = GetQueryString("new_email");
+        if (email != null) {
+            var input = document.getElementById("email");
+            input.value = email;
+            input.readOnly = true;
+        }
+    </script>
 {% endblock %}

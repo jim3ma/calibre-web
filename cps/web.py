@@ -93,6 +93,10 @@ try:
 except ImportError:
     import pickle as cPickle
 
+from tornado import version as tornadoVersion
+from socket import error as SocketError
+from flask_dance.contrib.github import make_github_blueprint, github
+
 try:
     from urllib.parse import quote
     from imp import reload
@@ -169,6 +173,23 @@ mimetypes.add_type('image/vnd.djvu', '.djvu')
 app = (Flask(__name__))
 app.wsgi_app = ReverseProxied(app.wsgi_app)
 cache_buster.init_cache_busting(app)
+
+gh_client_id = ""
+gh_client_secret = ""
+if "OAUTH2_GITHUB_CLIENT_ID" in os.environ:
+    gh_client_id = os.environ["OAUTH2_GITHUB_CLIENT_ID"]
+if "OAUTH2_GITHUB_CLIENT_SECRET" in os.environ:
+    gh_client_secret = os.environ["OAUTH2_GITHUB_CLIENT_SECRET"]
+
+blueprint = make_github_blueprint(
+    client_id=gh_client_id,
+    client_secret=gh_client_secret,
+    redirect_to="login_via_github",
+    scope=["user:email"],
+)
+app.register_blueprint(blueprint, url_prefix="/login")
+
+gevent_server = None
 
 formatter = logging.Formatter(
     "[%(asctime)s] {%(pathname)s:%(lineno)d} %(levelname)s - %(message)s")
@@ -2300,6 +2321,102 @@ def login():
                                  remote_login=config.config_remote_login, page="login")
 
 
+@app.route("/login/via/github")
+def login_via_github():
+    if not github.authorized:
+        return redirect(url_for("github.login"))
+    resp = github.get("/user")
+    if resp.ok:
+        info = resp.json()
+
+        gh_user = ub.session.query(ub.GitHubUser).filter(ub.GitHubUser.id == info["id"]).first()
+        if gh_user and gh_user.uid > 0:
+            user = ub.session.query(ub.User).filter(ub.User.id == gh_user.uid).first()
+            if user:
+                login_user(user, remember=True)
+                flash(_(u"you are now logged in as: '%(nickname)s'", nickname=user.nickname), category="success")
+                return redirect(url_for("index"))
+
+        if not gh_user:
+            gh = ub.GitHubUser()
+            gh.id = info["id"]
+            gh.login = info["login"]
+            gh.email = info["email"]
+            gh.name = info["name"]
+            try:
+                ub.session.add(gh)
+                ub.session.commit()
+            except Exception:
+                ub.session.rollback()
+
+        flash(_(u"Please register calibre web first"), category="success")
+        return redirect(url_for("register_via_github"))
+    flash(_(u"Can not fetch user information from GitHub, please try it later"), category="error")
+    return redirect(url_for("login"))
+
+
+@app.route('/register/via/github', methods=['GET', 'POST'])
+def register_via_github():
+    if not config.config_public_reg:
+        abort(404)
+
+    if not github.authorized:
+        return redirect(url_for("github.login"))
+
+    if current_user is not None and current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    if request.method == "POST":
+        resp = github.get("/user")
+        if not resp.ok:
+            flash(_(u"An unknown error occurred. Please try again later."), category="error")
+            return redirect(url_for('login'))
+        info = resp.json()
+
+        to_save = request.form.to_dict()
+        if not to_save["nickname"] or not to_save["email"] or not to_save["password"]:
+            flash(_(u"Please fill out all fields!"), category="error")
+            return render_title_template('register.html', title=_(u"register"))
+
+        existing_user = ub.session.query(ub.User).filter(func.lower(ub.User.nickname) == to_save["nickname"].lower()).first()
+        existing_email = ub.session.query(ub.User).filter(ub.User.email == to_save["email"]).first()
+        if not existing_user and not existing_email:
+            content = ub.User()
+            content.password = generate_password_hash(to_save["password"])
+            content.nickname = to_save["nickname"]
+            content.email = to_save["email"]
+            content.role = config.config_default_role
+            content.sidebar_view = config.config_default_show
+            try:
+                ub.session.add(content)
+                ub.session.commit()
+            except Exception:
+                ub.session.rollback()
+                flash(_(u"An unknown error occurred. Please try again later."), category="error")
+                return render_title_template('register.html', title=_(u"register"))
+
+            new_user = ub.session.query(ub.User).filter(
+                func.lower(ub.User.nickname) == to_save["nickname"].lower()).first()
+            gh_user = ub.session.query(ub.GitHubUser).filter(ub.GitHubUser.id == info["id"]).first()
+            if gh_user:
+                gh_user.uid = new_user.id
+            try:
+                ub.session.commit()
+            except Exception:
+                ub.session.rollback()
+                flash(_(u"An unknown error occurred. Please try again later."), category="error")
+                return render_title_template('register.html', title=_(u"register"))
+
+            login_user(new_user, remember=True)
+            flash(_(u"you are now logged in as: '%(nickname)s'", nickname=to_save["nickname"]), category="success")
+            return redirect(url_for("index"))
+        else:
+            flash(_(u"This username or email address is already in use."), category="error")
+            return render_title_template('register.html', title=_(u"register"))
+
+    return render_title_template('register.html', title=_(u"register"))
+
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -3216,6 +3333,7 @@ def edit_user(user_id):
         to_save = request.form.to_dict()
         if "delete" in to_save:
             ub.session.query(ub.User).filter(ub.User.id == content.id).delete()
+            ub.session.query(ub.GitHubUser).filter(ub.GitHubUser.uid == content.id).delete()
             ub.session.commit()
             flash(_(u"User '%(nick)s' deleted", nick=content.nickname), category="success")
             return redirect(url_for('admin'))
