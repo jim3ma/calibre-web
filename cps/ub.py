@@ -167,6 +167,15 @@ class User(UserBase, Base):
     mature_content = Column(Boolean, default=True)
 
 
+class GitHubUser(Base):
+    __tablename__ = 'github_user'
+    id = Column(Integer, primary_key=True)
+    uid = Column(Integer)
+    email = Column(String(120), unique=True, default="")
+    login = Column(String(64))
+    name = Column(String(64))
+
+
 # Class for anonymous user is derived from User base and complets overrides methods and properties for the
 # anonymous user
 class Anonymous(AnonymousUserMixin, UserBase):
