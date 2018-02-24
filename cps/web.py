@@ -2087,6 +2087,12 @@ def serve_book(book_id, book_format):
         return send_from_directory(os.path.join(config.config_calibre_dir, book.path), data.name + "." + book_format)
 
 
+@app.route("/favicon.ico")
+def favicon():
+    print config.config_main_dir
+    return send_from_directory(config.config_main_dir, "cps/static/favicon.ico")
+
+
 @app.route("/opds/thumb_240_240/<path:book_id>")
 @app.route("/opds/cover_240_240/<path:book_id>")
 @app.route("/opds/cover_90_90/<path:book_id>")
