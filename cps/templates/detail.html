@@ -54,6 +54,9 @@
                       {%if format.format|lower == 'epub' or format.format|lower == 'txt' or format.format|lower == 'pdf' or format.format|lower == 'cbr' or format.format|lower == 'cbt' or format.format|lower == 'cbz' %}
                       <li><a target="_blank" href="{{ url_for('read_book', book_id=entry.id, book_format=format.format|lower) }}">{{format.format}}</a></li>
                       {% endif %}
+                      {%if format.format|lower == 'epub' %}
+                      <li><a target="_blank" href="{{ url_for('read_gitbook', book_id=entry.id, book_format=format.format|lower) }}">Gitbook</a></li>
+                      {% endif %}
                     {%endfor%}
                     </ul>
               </div>

@@ -1945,6 +1945,48 @@ def read_book(book_id, book_format):
                 return render_title_template('readcbr.html', comicfile=all_name, title=_(u"Read a Book"))
 
 
+@app.route("/read/gitbook/<int:book_id>/<book_format>")
+@login_required_if_no_ano
+def read_gitbook(book_id, book_format):
+    book = db.session.query(db.Books).filter(db.Books.id == book_id).first()
+    if not book:
+        flash(_(u"Error opening eBook. File does not exist or file is not accessible:"), category="error")
+        return redirect(url_for("index"))
+
+    book_dir = os.path.join(config.get_main_dir, "cps", "static", str(book_id))
+    if not os.path.exists(book_dir):
+        os.mkdir(book_dir)
+    bookmark = None
+    if current_user.is_authenticated:
+        bookmark = ub.session.query(ub.Bookmark).filter(ub.and_(ub.Bookmark.user_id == int(current_user.id),
+                                                            ub.Bookmark.book_id == book_id,
+                                                            ub.Bookmark.format == book_format.upper())).first()
+    if book_format.lower() == "epub":
+        # check if mimetype file is exists
+        output = os.path.join(config.get_main_dir, "cps", "static", str(book_id), "gitbook")
+        mime_file = output + "/mimetype"
+        if not os.path.exists(mime_file):
+            epub_file = os.path.join(config.config_calibre_dir, book.path, book.data[0].name) + ".epub"
+            if not os.path.isfile(epub_file):
+                raise ValueError('Error opening eBook. File does not exist: ', epub_file)
+            cmd = 'epub2website -e "%s" -o "%s"' % (epub_file, output)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            com = p.communicate()
+            out = com[0].strip()
+            err = com[1].strip()
+            status = p.returncode
+            f = open(output + "/redirect_url", "w")
+            f.writelines(out)
+            f.close()
+            if status != 0:
+                return "transfer epub book error: %s" % err
+        f = open(output + "/redirect_url", "r")
+        out = f.readline()
+        return redirect('/static/%s/gitbook/%s' % (str(book_id), out))
+    else:
+        return "not support format"
+
+
 @app.route("/download/<int:book_id>/<book_format>")
 @login_required_if_no_ano
 @download_required
