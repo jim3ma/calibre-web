@@ -108,6 +108,14 @@ try:
 except ImportError:
     from flask_login.__about__ import __version__ as flask_loginVersion
 
+import time
+
+try:  # py3
+    from shlex import quote
+except ImportError:  # py2
+    from pipes import quote
+
+current_milli_time = lambda: int(round(time.time() * 1000))
 
 # Global variables
 current_milli_time = lambda: int(round(time.time() * 1000))
@@ -2178,6 +2186,10 @@ def read_book(book_id, book_format):
 
     # check if book was downloaded before
     lbookmark = None
+    book_dir = os.path.join(config.get_main_dir, "cps", "static", book_format.lower(), str(book_id))
+    if not os.path.exists(book_dir):
+        os.mkdir(book_dir)
+    bookmark = None
     if current_user.is_authenticated:
         lbookmark = ub.session.query(ub.Bookmark).filter(ub.and_(ub.Bookmark.user_id == int(current_user.id),
                                                             ub.Bookmark.book_id == book_id,
@@ -2210,6 +2222,50 @@ def read_book(book_id, book_format):
                 return render_title_template('readcbr.html', comicfile=book_id, extension=fileext, title=_(u"Read a Book"), book=book)
         flash(_(u"Error opening eBook. File does not exist or file is not accessible."), category="error")
         return redirect(url_for("index"))'''
+
+
+@app.route("/read/gitbook/<int:book_id>/<book_format>")
+@login_required_if_no_ano
+def read_gitbook(book_id, book_format):
+    book = db.session.query(db.Books).filter(db.Books.id == book_id).first()
+    data = db.session.query(db.Data).filter(db.Data.book == book.id).filter(db.Data.format == book_format.upper()).first()
+    if not book:
+        flash(_(u"Error opening eBook. File does not exist or file is not accessible:"), category="error")
+        return redirect(url_for("index"))
+
+    book_dir = os.path.join(config.get_main_dir, "cps", "static", "gitbook", str(book_id))
+    if not os.path.exists(book_dir):
+        os.makedirs(book_dir)
+    bookmark = None
+    if current_user.is_authenticated:
+        bookmark = ub.session.query(ub.Bookmark).filter(ub.and_(ub.Bookmark.user_id == int(current_user.id),
+                                                            ub.Bookmark.book_id == book_id,
+                                                            ub.Bookmark.format == book_format.upper())).first()
+    if book_format.lower() == "epub":
+        # check if mimetype file is exists
+        output = book_dir
+        mime_file = output + "/mimetype"
+        if not os.path.exists(mime_file):
+            epub_file = os.path.join(config.config_calibre_dir, book.path, data.name) + ".epub"
+            if not os.path.isfile(epub_file):
+                raise ValueError('Error opening eBook. File does not exist: ', epub_file)
+            cmd = "epub2website -e %s -o %s" % (quote(epub_file), quote(output))
+            print cmd
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+            com = p.communicate()
+            out = com[0].strip()
+            err = com[1].strip()
+            status = p.returncode
+            f = open(output + "/redirect_url", "w")
+            f.writelines(out)
+            f.close()
+            if status != 0:
+                return "transfer epub book error: %s" % err
+        f = open(output + "/redirect_url", "r")
+        out = f.readline()
+        return redirect('/static/gitbook/%s/%s' % (str(book_id), out))
+    else:
+        return "not support format"
 
 
 @app.route("/download/<int:book_id>/<book_format>")
