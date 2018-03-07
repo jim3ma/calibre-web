@@ -79,14 +79,14 @@
             </div>
         </div>
     {{ $p := prev }}
+    {{ $n := next }}
     {{- if $p }}
-        <a href="{{ $p | rel }}" class="navigation navigation-prev " aria-label="Previous page: {{ $p.Title}}">
+        <a href="{{ $p | rel }}" class="navigation navigation-prev{{if $n}}{{else}} navigation-unique{{end}}" aria-label="Previous page: {{ $p.Title}}">
             <i class="fa fa-angle-left"></i>
         </a>
     {{- end -}}
-    {{ $n := next }}
     {{- if $n }}
-        <a href="{{ $n | rel }}" class="navigation navigation-next " aria-label="Next page: {{ $n.Title}}">
+        <a href="{{ $n | rel }}" class="navigation navigation-next{{if $p}}{{else}} navigation-unique{{end}}" aria-label="Next page: {{ $n.Title}}">
             <i class="fa fa-angle-right"></i>
         </a>
     {{- end }}

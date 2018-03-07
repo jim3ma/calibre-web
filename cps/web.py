@@ -1969,7 +1969,7 @@ def read_gitbook(book_id, book_format):
             epub_file = os.path.join(config.config_calibre_dir, book.path, book.data[0].name) + ".epub"
             if not os.path.isfile(epub_file):
                 raise ValueError('Error opening eBook. File does not exist: ', epub_file)
-            cmd = 'epub2website -e "%s" -o "%s"' % (epub_file, output)
+            cmd = "epub2website -e '%s' -o '%s'" % (epub_file, output)
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             com = p.communicate()
             out = com[0].strip()
