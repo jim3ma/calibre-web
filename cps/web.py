@@ -1953,9 +1953,9 @@ def read_gitbook(book_id, book_format):
         flash(_(u"Error opening eBook. File does not exist or file is not accessible:"), category="error")
         return redirect(url_for("index"))
 
-    book_dir = os.path.join(config.get_main_dir, "cps", "static", str(book_id))
+    book_dir = os.path.join(config.get_main_dir, "cps", "static", "gitbook", str(book_id))
     if not os.path.exists(book_dir):
-        os.mkdir(book_dir)
+        os.makedirs(book_dir)
     bookmark = None
     if current_user.is_authenticated:
         bookmark = ub.session.query(ub.Bookmark).filter(ub.and_(ub.Bookmark.user_id == int(current_user.id),
@@ -1963,7 +1963,7 @@ def read_gitbook(book_id, book_format):
                                                             ub.Bookmark.format == book_format.upper())).first()
     if book_format.lower() == "epub":
         # check if mimetype file is exists
-        output = os.path.join(config.get_main_dir, "cps", "static", str(book_id), "gitbook")
+        output = book_dir
         mime_file = output + "/mimetype"
         if not os.path.exists(mime_file):
             epub_file = os.path.join(config.config_calibre_dir, book.path, book.data[0].name) + ".epub"
@@ -1982,7 +1982,7 @@ def read_gitbook(book_id, book_format):
                 return "transfer epub book error: %s" % err
         f = open(output + "/redirect_url", "r")
         out = f.readline()
-        return redirect('/static/%s/gitbook/%s' % (str(book_id), out))
+        return redirect('/static/gitbook/%s/%s' % (str(book_id), out))
     else:
         return "not support format"
 
