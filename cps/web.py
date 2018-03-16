@@ -95,6 +95,11 @@ except ImportError:
 
 import time
 
+try:  # py3
+    from shlex import quote
+except ImportError:  # py2
+    from pipes import quote
+
 current_milli_time = lambda: int(round(time.time() * 1000))
 
 
@@ -1899,7 +1904,7 @@ def read_book(book_id, book_format):
         flash(_(u"Error opening eBook. File does not exist or file is not accessible:"), category="error")
         return redirect(url_for("index"))
 
-    book_dir = os.path.join(config.get_main_dir, "cps", "static", str(book_id))
+    book_dir = os.path.join(config.get_main_dir, "cps", "static", book_format.lower(), str(book_id))
     if not os.path.exists(book_dir):
         os.mkdir(book_dir)
     bookmark = None
@@ -1969,7 +1974,8 @@ def read_gitbook(book_id, book_format):
             epub_file = os.path.join(config.config_calibre_dir, book.path, book.data[0].name) + ".epub"
             if not os.path.isfile(epub_file):
                 raise ValueError('Error opening eBook. File does not exist: ', epub_file)
-            cmd = "epub2website -e '%s' -o '%s'" % (epub_file, output)
+            cmd = "epub2website -e %s -o %s" % (quote(epub_file), quote(output))
+            print cmd
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
             com = p.communicate()
             out = com[0].strip()
@@ -2899,7 +2905,7 @@ def edit_mailsettings():
         try:
             ub.session.commit()
             flash(_(u"Mail settings updated"), category="success")
-        except e:
+        except Exception as e:
             flash(e, category="error")
         if "test" in to_save and to_save["test"]:
             if current_user.kindle_mail:
