@@ -3329,6 +3329,9 @@ def save_cover(url, book_path):
     return true
 
 
+NEED_CONVERT_EXTENSIONS = ['mobi', 'azw', 'azw3']
+
+
 @app.route("/upload", methods=["GET", "POST"])
 @login_required_if_no_ano
 @upload_required
@@ -3340,8 +3343,12 @@ def upload():
     db.session.connection().connection.connection.create_function('uuid4', 0, lambda: str(uuid4()))
     if request.method == 'POST' and 'btn-upload' in request.files:
         requested_file = request.files['btn-upload']
+        is_convert = false
+        file_ext = ""
         if '.' in requested_file.filename:
             file_ext = requested_file.filename.rsplit('.', 1)[-1].lower()
+            if file_ext in NEED_CONVERT_EXTENSIONS:
+                is_convert = true
             if file_ext not in ALLOWED_EXTENSIONS:
                 flash(
                     _('File extension "%s" is not allowed to be uploaded to this server' %
@@ -3427,6 +3434,15 @@ def upload():
             db_book.languages.append(db_language)
         db_data = db.Data(db_book, meta.extension.upper()[1:], file_size, data_name)
         db_book.data.append(db_data)
+
+        if is_convert:
+            saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
+            copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
+            print meta.file_path
+            print saved_filename_orig
+            orig_file_size = os.path.getsize(saved_filename_orig)
+            db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
+            db_book.data.append(db_data)
 
         db.session.add(db_book)
         db.session.flush()  # flush content get db_book.id avalible
