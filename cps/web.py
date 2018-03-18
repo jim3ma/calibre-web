@@ -3343,22 +3343,22 @@ def upload():
     db.session.connection().connection.connection.create_function('uuid4', 0, lambda: str(uuid4()))
     if request.method == 'POST' and 'btn-upload' in request.files:
         requested_file = request.files['btn-upload']
-        is_convert = false
+        is_convert = False
         file_ext = ""
         if '.' in requested_file.filename:
             file_ext = requested_file.filename.rsplit('.', 1)[-1].lower()
             if file_ext in NEED_CONVERT_EXTENSIONS:
-                is_convert = true
+                is_convert = True
+                print "is_convert: ", is_convert
             if file_ext not in ALLOWED_EXTENSIONS:
                 flash(
-                    _('File extension "%s" is not allowed to be uploaded to this server' %
-                    file_ext),
+                    _('File extension "%s" is not allowed to be uploaded to this server' % file_ext),
                     category="error"
                 )
-                return redirect(url_for('index'))
+                return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
         else:
             flash(_('File to be uploaded must have an extension'), category="error")
-            return redirect(url_for('index'))
+            return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
         meta = uploader.upload(requested_file)
 
         title = meta.title
@@ -3377,12 +3377,12 @@ def upload():
                 os.makedirs(filepath)
             except OSError:
                 flash(_(u"Failed to create path %s (Permission denied)." % filepath), category="error")
-                return redirect(url_for('index'))
+                return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
         try:
             copyfile(meta.file_path, saved_filename)
         except OSError:
             flash(_(u"Failed to store file %s (Permission denied)." % saved_filename), category="error")
-            return redirect(url_for('index'))
+            return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
         try:
             os.unlink(meta.file_path)
         except OSError:
@@ -3435,14 +3435,17 @@ def upload():
         db_data = db.Data(db_book, meta.extension.upper()[1:], file_size, data_name)
         db_book.data.append(db_data)
 
-        if is_convert:
-            saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
-            copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
-            print meta.file_path
-            print saved_filename_orig
-            orig_file_size = os.path.getsize(saved_filename_orig)
-            db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
-            db_book.data.append(db_data)
+        if is_convert is True:
+            try:
+                saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
+                copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
+                print meta.file_path
+                print saved_filename_orig
+                orig_file_size = os.path.getsize(saved_filename_orig)
+                db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
+                db_book.data.append(db_data)
+            except IOError as e:
+                print e
 
         db.session.add(db_book)
         db.session.flush()  # flush content get db_book.id avalible
@@ -3465,13 +3468,16 @@ def upload():
             updateGdriveCalibreFromLocal()
         cc = db.session.query(db.Custom_Columns).filter(db.Custom_Columns.datatype.notin_(db.cc_exceptions)).all()
         if current_user.role_edit() or current_user.role_admin():
-            return render_title_template('book_edit.html', book=db_book, authors=author_names, cc=cc,
-                                         title=_(u"edit metadata"))
-        book_in_shelfs = []
-        return render_title_template('detail.html', entry=db_book, cc=cc, title=db_book.title,
-                                     books_shelfs=book_in_shelfs, )
+            resp = {
+                "location": url_for('edit_book', book_id=db_book.id)
+            }
+            return Response(json.dumps(resp), mimetype='application/json')
+        resp = {
+            "location": url_for('show_book', book_id=db_book.id)
+        }
+        return Response(json.dumps(resp), mimetype='application/json')
     else:
-        return redirect(url_for("index"))
+        return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
 
 
 def start_gevent():

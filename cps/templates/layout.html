@@ -223,8 +223,10 @@
     <script src="{{ url_for('static', filename='js/libs/plugins.js') }}"></script>
     <script src="{{ url_for('static', filename='js/libs/jquery.form.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/uploadprogress.js') }}"> </script>
     <script type="text/javascript">
         $(function() {
+            $("#form-upload").uploadprogress({redirect_url: '/'});
             $("#btn-upload").change(function() {
                 $("#form-upload").submit();
             });
