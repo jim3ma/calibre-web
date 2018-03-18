@@ -1906,7 +1906,7 @@ def read_book(book_id, book_format):
 
     book_dir = os.path.join(config.get_main_dir, "cps", "static", book_format.lower(), str(book_id))
     if not os.path.exists(book_dir):
-        os.mkdir(book_dir)
+        os.makedirs(book_dir)
     bookmark = None
     if current_user.is_authenticated:
         bookmark = ub.session.query(ub.Bookmark).filter(ub.and_(ub.Bookmark.user_id == int(current_user.id),
@@ -1934,7 +1934,7 @@ def read_book(book_id, book_format):
                     fd.write(zfile.read(name))
                     fd.close()
             zfile.close()
-        return render_title_template('read.html', bookid=book_id, title=_(u"Read a Book"), bookmark=bookmark)
+        return render_title_template('read.html', bookid=str(book_id), title=_(u"Read a Book"), bookmark=bookmark)
     elif book_format.lower() == "pdf":
         return render_title_template('readpdf.html', pdffile=book_id, title=_(u"Read a Book"))
     elif book_format.lower() == "txt":
