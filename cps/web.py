@@ -4086,3 +4086,49 @@ def convert_bookformat(book_id):
     else:
         flash(_(u"There was an error converting this book: %(res)s", res=rtn), category="error")
     return redirect(request.environ["HTTP_REFERER"])
+
+
+@app.route("/convert/book/<int:book_id>/<from_format>/to/<to_format>", methods=['GET', 'POST'])
+@login_required_if_no_ano
+@edit_required
+def convert_book(book_id, from_format, to_format):
+    book = db.session.query(db.Books)\
+        .filter(db.Books.id == book_id).filter(common_filters()).first()
+     # Book not found
+    if not book:
+        return Response(json.dumps({"success": False, "error": "Error opening eBook. File does not exist or file is not accessible"}), mimetype='application/json')
+     '''
+    if request.method != 'POST':
+        return Response(json.dumps({"success": false, "error": "Please use POST method"}), mimetype='application/json')
+    '''
+    book_data = db.session.query(db.Data)\
+        .filter(and_(db.Data.book == book.id, db.Data.format == from_format.upper())).first()
+     if not book_data:
+        return Response(json.dumps({"success": False, "error": "Error opening eBook. File does not exist or file is not accessible"}), mimetype='application/json')
+     file_name = book_data.name
+    print file_name
+    file_path = os.path.normpath(config.config_calibre_dir + os.sep + book.path)
+    orig_filename = file_path + os.sep + file_name + '.' + from_format
+    saved_filename = file_path + os.sep + file_name + '.' + to_format
+     try:
+        cmd = "ebook-convert %s %s --output-profile tablet" % (quote(orig_filename), quote(saved_filename))
+        print cmd
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        com = p.communicate()
+        out = com[0].strip()
+        err = com[1].strip()
+        status = p.returncode
+        print status, out, err
+         file_size = os.path.getsize(saved_filename)
+        is_format = db.session.query(db.Data).filter(db.Data.book == book_id).filter(
+            db.Data.format == to_format.upper()).first()
+        if is_format:
+            # Format entry already exists, no need to update the database
+            pass
+        else:
+            db_format = db.Data(book_id, to_format.upper(), file_size, file_name)
+            db.session.add(db_format)
+            db.session.commit()
+    except OSError as e:
+        return Response(json.dumps({"success": False, "error": e.message}), mimetype='application/json')
+    return Response(json.dumps({"success": True, "error": ""}), mimetype='application/json')
