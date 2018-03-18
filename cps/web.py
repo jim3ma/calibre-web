@@ -3891,21 +3891,22 @@ def upload():
             # create the function for sorting...
             db.session.connection().connection.connection.create_function("title_sort", 1, db.title_sort)
             db.session.connection().connection.connection.create_function('uuid4', 0, lambda: str(uuid4()))
-            is_convert = false
+            is_convert = False
             file_ext = ""
             # check if file extension is correct
             if '.' in requested_file.filename:
                 file_ext = requested_file.filename.rsplit('.', 1)[-1].lower()
                 if file_ext in NEED_CONVERT_EXTENSIONS:
-                    is_convert = true
+                    is_convert = True
+                    print "is_convert: ", is_convert
                 if file_ext not in EXTENSIONS_UPLOAD:
                     flash(
                         _("File extension '%(ext)s' is not allowed to be uploaded to this server",
                           ext=file_ext), category="error")
-                    return redirect(url_for('index'))
+                    return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
             else:
                 flash(_('File to be uploaded must have an extension'), category="error")
-                return redirect(url_for('index'))
+                return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
                 
             # extract metadata from file
             meta = uploader.upload(requested_file)
@@ -3925,12 +3926,12 @@ def upload():
                     os.makedirs(filepath)
                 except OSError:
                     flash(_(u"Failed to create path %(path)s (Permission denied).", path=filepath), category="error")
-                    return redirect(url_for('index'))
+                    return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
             try:
                 copyfile(meta.file_path, saved_filename)
             except OSError:
                 flash(_(u"Failed to store file %(file)s (Permission denied).", file=saved_filename), category="error")
-                return redirect(url_for('index'))
+                return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
             try:
                 os.unlink(meta.file_path)
             except OSError:
@@ -3993,14 +3994,24 @@ def upload():
             # flush content, get db_book.id available
             db_book.data.append(db_data)
 
-            if is_convert:
+            if is_convert is True:
                 saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
-                copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
-                print meta.file_path
-                print saved_filename_orig
-                orig_file_size = os.path.getsize(saved_filename_orig)
-                db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
-                db_book.data.append(db_data)
+                try:
+                    copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
+                    saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
+                    print meta.file_path
+                    copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
+                    print saved_filename_orig
+                    print meta.file_path
+                    orig_file_size = os.path.getsize(saved_filename_orig)
+                    print saved_filename_orig
+                    db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
+                    orig_file_size = os.path.getsize(saved_filename_orig)
+                    db_book.data.append(db_data)
+                    db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
+                    db_book.data.append(db_data)
+                except IOError as e:
+                    print e
 
             db.session.add(db_book)
             db.session.flush()
@@ -4039,12 +4050,15 @@ def upload():
             if len(request.files.getlist("btn-upload")) < 2:
                 cc = db.session.query(db.Custom_Columns).filter(db.Custom_Columns.datatype.notin_(db.cc_exceptions)).all()
                 if current_user.role_edit() or current_user.role_admin():
-                    return render_title_template('book_edit.html', book=book, authors=author_names,
-                                                 cc=cc, title=_(u"edit metadata"), page="upload")
-                book_in_shelfs = []
-                return render_title_template('detail.html', entry=book, cc=cc,
-                                             title=book.title, books_shelfs=book_in_shelfs, page="upload")
-    return redirect(url_for("index"))
+                    resp = {
+                        "location": url_for('edit_book', book_id=db_book.id)
+                    }
+                    return Response(json.dumps(resp), mimetype='application/json')
+                resp = {
+                    "location": url_for('show_book', book_id=db_book.id)
+                }
+                return Response(json.dumps(resp), mimetype='application/json')
+    return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
 
 
 @app.route("/admin/book/convert/<int:book_id>", methods=['POST'])

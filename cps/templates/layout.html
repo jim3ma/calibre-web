@@ -15,6 +15,7 @@
     {% if g.user.get_theme == 1 %}
        <link href="{{ url_for('static', filename='css/caliBlur-style.css') }}" rel="stylesheet" media="screen">
     {% endif %}
+    <link href="{{ url_for('static', filename='css/upload.css') }}" rel="stylesheet" media="screen">
     <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
     <!--[if lt IE 9]>
@@ -237,9 +238,11 @@
     <script src="{{ url_for('static', filename='js/libs/plugins.js') }}"></script>
     <script src="{{ url_for('static', filename='js/libs/jquery.form.js') }}"></script>
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/uploadprogress.js') }}"> </script>
     <script type="text/javascript">
     $(function () {
       $("#btn-upload").change(function () {
+        $("#form-upload").uploadprogress({redirect_url: '/'});
         $("#loader").show();
         $("#form-upload").submit();
       });
