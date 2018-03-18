@@ -2188,14 +2188,14 @@ def read_book(book_id, book_format):
     lbookmark = None
     book_dir = os.path.join(config.get_main_dir, "cps", "static", book_format.lower(), str(book_id))
     if not os.path.exists(book_dir):
-        os.mkdir(book_dir)
+        os.makedirs(book_dir)
     bookmark = None
     if current_user.is_authenticated:
         lbookmark = ub.session.query(ub.Bookmark).filter(ub.and_(ub.Bookmark.user_id == int(current_user.id),
                                                             ub.Bookmark.book_id == book_id,
                                                             ub.Bookmark.format == book_format.upper())).first()
     if book_format.lower() == "epub":
-        return render_title_template('read.html', bookid=book_id, title=_(u"Read a Book"), bookmark=lbookmark)
+        return render_title_template('read.html', bookid=str(book_id), title=_(u"Read a Book"), bookmark=bookmark)
     elif book_format.lower() == "pdf":
         return render_title_template('readpdf.html', pdffile=book_id, title=_(u"Read a Book"))
     elif book_format.lower() == "txt":
