@@ -27,7 +27,7 @@
       <div class="modal-body">\
         <div class="modal-message"></div>\
         <div class="progress">\
-          <div class="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0"\
+          <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="0" aria-valuemin="0"\
                aria-valuemax="100" style="width: 0%;min-width: 2em;">\
             0%\
           </div>\
@@ -146,8 +146,12 @@
         },
 
         set_progress: function(percent){
+            var txt = percent + '%';
+            if (percent == 100) {
+                txt = this.options.uploaded_msg;
+            }
             this.$modal_bar.attr('aria-valuenow', percent);
-            this.$modal_bar.text(percent + '%');
+            this.$modal_bar.text(txt);
             this.$modal_bar.css('width', percent + '%');
         },
 
@@ -184,7 +188,8 @@
     };
 
     $.fn.uploadprogress.defaults = {
-        template: template
+        template: template,
+        uploaded_msg: "Upload done, processing, please wait..."
         //redirect_url: ...
 
         // need to customize stuff? Add here, and change code accordingly.
