@@ -1954,6 +1954,7 @@ def read_book(book_id, book_format):
 @login_required_if_no_ano
 def read_gitbook(book_id, book_format):
     book = db.session.query(db.Books).filter(db.Books.id == book_id).first()
+    data = db.session.query(db.Data).filter(db.Data.book == book.id).filter(db.Data.format == book_format.upper()).first()
     if not book:
         flash(_(u"Error opening eBook. File does not exist or file is not accessible:"), category="error")
         return redirect(url_for("index"))
@@ -1971,7 +1972,7 @@ def read_gitbook(book_id, book_format):
         output = book_dir
         mime_file = output + "/mimetype"
         if not os.path.exists(mime_file):
-            epub_file = os.path.join(config.config_calibre_dir, book.path, book.data[0].name) + ".epub"
+            epub_file = os.path.join(config.config_calibre_dir, book.path, data.name) + ".epub"
             if not os.path.isfile(epub_file):
                 raise ValueError('Error opening eBook. File does not exist: ', epub_file)
             cmd = "epub2website -e %s -o %s" % (quote(epub_file), quote(output))
