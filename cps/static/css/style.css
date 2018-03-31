@@ -110,3 +110,15 @@ input.pill:not(:checked) + label .glyphicon {
 .editable-cancel { margin-bottom: 0px !important; margin-left: 7px !important;}
 .editable-submit { margin-bottom: 0px !important;}
 
+@media (min-device-width: 480px) {
+    .container-fluid .book .cover {
+        height: 225px;
+        position: relative
+    }
+}
+@media (max-device-width: 480px) {
+    .container-fluid .book .cover {
+        height: 180px;
+        position: relative
+    }
+}
