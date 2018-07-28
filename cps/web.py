@@ -3339,6 +3339,8 @@ def convert_book(book_id, from_format, to_format):
 
     try:
         cmd = "ebook-convert %s %s --output-profile tablet" % (quote(orig_filename), quote(saved_filename))
+        if to_format == "epub":
+            cmd = "ebook-convert %s %s --output-profile tablet --no-default-epub-cover" % (quote(orig_filename), quote(saved_filename))
         print cmd
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         com = p.communicate()
@@ -3487,10 +3489,12 @@ def upload():
         db_data = db.Data(db_book, meta.extension.upper()[1:], file_size, data_name)
         db_book.data.append(db_data)
 
+        # copy converted epub format
         if is_convert is True:
             try:
                 saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
                 copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
+                print "copy converted epub format"
                 print meta.file_path
                 print saved_filename_orig
                 orig_file_size = os.path.getsize(saved_filename_orig)

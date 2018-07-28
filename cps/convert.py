@@ -16,7 +16,7 @@ def get_meta_info(tmp_file_path, original_file_name, original_file_extension):
     os.rename(tmp_file_path, tmp_file_path + ext)
 
     output = tmp_file_path + ".epub"
-    cmd = "ebook-convert %s %s --output-profile tablet" % (quote(tmp_file_path + ext), quote(output))
+    cmd = "ebook-convert %s %s --output-profile tablet --no-default-epub-cover" % (quote(tmp_file_path + ext), quote(output))
     print cmd
     p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     com = p.communicate()
