@@ -60,7 +60,7 @@
                       {% endif %}
                       {%if format.format|lower == 'epub' %}
                       <a target="_blank" href="{{ url_for('read_gitbook', book_id=entry.id, book_format=format.format|lower) }}" class="btn btn-success" role="button">
-                          <span class="glyphicon glyphicon-globe"></span> Gitbook</a>
+                          <span class="glyphicon glyphicon-book"></span> Gitbook</a>
                       {% endif %}
                     {%endfor%}
                 {% else %}

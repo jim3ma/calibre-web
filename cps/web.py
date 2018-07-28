@@ -54,6 +54,7 @@ import tempfile
 from redirect import redirect_back
 import time
 import server
+import subprocess
 from reverseproxy import ReverseProxied
 try:
     from googleapiclient.errors import HttpError
@@ -3917,6 +3918,7 @@ def upload():
             series_index = meta.series_id
             title_dir = helper.get_valid_filename(title)
             author_dir = helper.get_valid_filename(authr)
+            data_name = title_dir
             filepath = os.path.join(config.config_calibre_dir, author_dir, title_dir)
             saved_filename = os.path.join(filepath, title_dir + meta.extension.lower())
 
@@ -3994,20 +3996,15 @@ def upload():
             # flush content, get db_book.id available
             db_book.data.append(db_data)
 
+            # copy converted epub format
             if is_convert is True:
-                saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
                 try:
-                    copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
                     saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
-                    print meta.file_path
                     copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
-                    print saved_filename_orig
-                    print meta.file_path
+                    print "copy converted epub format"
+                    print "epub:", meta.file_path
+                    print "origin file:", saved_filename_orig
                     orig_file_size = os.path.getsize(saved_filename_orig)
-                    print saved_filename_orig
-                    db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
-                    orig_file_size = os.path.getsize(saved_filename_orig)
-                    db_book.data.append(db_data)
                     db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
                     db_book.data.append(db_data)
                 except IOError as e:
@@ -4097,21 +4094,23 @@ def convert_book(book_id, from_format, to_format):
      # Book not found
     if not book:
         return Response(json.dumps({"success": False, "error": "Error opening eBook. File does not exist or file is not accessible"}), mimetype='application/json')
-     '''
+    '''
     if request.method != 'POST':
         return Response(json.dumps({"success": false, "error": "Please use POST method"}), mimetype='application/json')
     '''
     book_data = db.session.query(db.Data)\
         .filter(and_(db.Data.book == book.id, db.Data.format == from_format.upper())).first()
-     if not book_data:
+    if not book_data:
         return Response(json.dumps({"success": False, "error": "Error opening eBook. File does not exist or file is not accessible"}), mimetype='application/json')
-     file_name = book_data.name
+    file_name = book_data.name
     print file_name
     file_path = os.path.normpath(config.config_calibre_dir + os.sep + book.path)
     orig_filename = file_path + os.sep + file_name + '.' + from_format
     saved_filename = file_path + os.sep + file_name + '.' + to_format
-     try:
+    try:
         cmd = "ebook-convert %s %s --output-profile tablet" % (quote(orig_filename), quote(saved_filename))
+        if to_format == "epub":
+            cmd = "ebook-convert %s %s --output-profile tablet --no-default-epub-cover" % (quote(orig_filename), quote(saved_filename))
         print cmd
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
         com = p.communicate()
@@ -4119,7 +4118,7 @@ def convert_book(book_id, from_format, to_format):
         err = com[1].strip()
         status = p.returncode
         print status, out, err
-         file_size = os.path.getsize(saved_filename)
+        file_size = os.path.getsize(saved_filename)
         is_format = db.session.query(db.Data).filter(db.Data.book == book_id).filter(
             db.Data.format == to_format.upper()).first()
         if is_format:
