@@ -21,6 +21,8 @@ def init_cache_busting(app):
     app.logger.debug('Computing cache-busting values...')
     # compute file hashes
     for dirpath, __, filenames in os.walk(static_folder):
+        if "gitbook" in dirpath or "epub" in dirpath:
+            continue
         for filename in filenames:
             # compute version component
             rooted_filename = os.path.join(dirpath, filename)
