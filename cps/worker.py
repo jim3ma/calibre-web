@@ -252,6 +252,7 @@ class WorkerThread(threading.Thread):
             return
        
         try:
+            command = []
             # check which converter to use kindlegen is "1"
             if format_old_ext == '.epub' and format_new_ext == '.mobi':
                 if web.ub.config.config_ebookconverter == 1:
@@ -282,7 +283,12 @@ class WorkerThread(threading.Thread):
                     if sys.version_info < (3, 0):
                         command = [x.encode(sys.getfilesystemencoding()) for x in command]
 
-            p = subprocess.Popen(command, stdout=subprocess.PIPE, universal_newlines=True)
+            command.append("--output-profile")
+            command.append("tablet")
+            if format_new_ext == '.epub':
+                command.append("--no-default-epub-cover")
+            web.app.logger.info("convert command: " + " ".join(command))
+            p = subprocess.Popen(command, stdout=subprocess.PIPE,)
         except OSError as e:
             self._handleError(_(u"Ebook-converter failed: %(error)s", error=e))
             return

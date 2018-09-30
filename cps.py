@@ -1,6 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+try:
+    from gevent import monkey
+    monkey.patch_all()
+except ImportError:
+    pass
+
 import os
 import sys
 
@@ -14,8 +20,3 @@ from cps.server import Server
 
 if __name__ == '__main__':
     Server.startServer()
-
-
-
-
-

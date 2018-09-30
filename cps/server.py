@@ -11,6 +11,8 @@ try:
     from gevent.pywsgi import WSGIServer
     from gevent.pool import Pool
     from gevent import __version__ as geventVersion
+    from gevent import monkey
+    monkey.patch_all()
     gevent_present = True
 except ImportError:
     from tornado.wsgi import WSGIContainer
