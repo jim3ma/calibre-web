@@ -3538,8 +3538,10 @@ def upload():
 
 def start_gevent():
     from gevent.wsgi import WSGIServer
+    from gevent import monkey
     global gevent_server
     try:
+        monkey.patch_all()
         gevent_server = WSGIServer(('', ub.config.config_port), app)
         gevent_server.serve_forever()
     except SocketError:
