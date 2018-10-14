@@ -54,6 +54,7 @@ import tempfile
 from redirect import redirect_back
 import time
 import server
+import subprocess
 from reverseproxy import ReverseProxied
 try:
     from googleapiclient.errors import HttpError
@@ -3877,6 +3878,9 @@ def edit_book(book_id):
         return redirect(url_for('show_book', book_id=book.id))
 
 
+NEED_CONVERT_EXTENSIONS = ['mobi', 'azw', 'azw3']
+
+
 @app.route("/upload", methods=["GET", "POST"])
 @login_required_if_no_ano
 @upload_required
@@ -3888,10 +3892,14 @@ def upload():
             # create the function for sorting...
             db.session.connection().connection.connection.create_function("title_sort", 1, db.title_sort)
             db.session.connection().connection.connection.create_function('uuid4', 0, lambda: str(uuid4()))
-            
+            is_convert = False
+            file_ext = ""
             # check if file extension is correct
             if '.' in requested_file.filename:
                 file_ext = requested_file.filename.rsplit('.', 1)[-1].lower()
+                if file_ext in NEED_CONVERT_EXTENSIONS:
+                    is_convert = True
+                    print "is_convert: ", is_convert
                 if file_ext not in EXTENSIONS_UPLOAD:
                     flash(
                         _("File extension '%(ext)s' is not allowed to be uploaded to this server",
@@ -3910,6 +3918,7 @@ def upload():
             series_index = meta.series_id
             title_dir = helper.get_valid_filename(title)
             author_dir = helper.get_valid_filename(authr)
+            data_name = title_dir
             filepath = os.path.join(config.config_calibre_dir, author_dir, title_dir)
             saved_filename = os.path.join(filepath, title_dir + meta.extension.lower())
 
@@ -3986,6 +3995,21 @@ def upload():
             
             # flush content, get db_book.id available
             db_book.data.append(db_data)
+
+            # copy converted epub format
+            if is_convert is True:
+                try:
+                    saved_filename_orig = filepath + os.sep + data_name + "." + file_ext.lower()
+                    copyfile(meta.file_path.replace(".epub", ""), saved_filename_orig)
+                    print "copy converted epub format"
+                    print "epub:", meta.file_path
+                    print "origin file:", saved_filename_orig
+                    orig_file_size = os.path.getsize(saved_filename_orig)
+                    db_data = db.Data(db_book, file_ext.upper(), orig_file_size, data_name)
+                    db_book.data.append(db_data)
+                except IOError as e:
+                    print e
+
             db.session.add(db_book)
             db.session.flush()
 

@@ -45,6 +45,9 @@ except ImportError as e:
     logger.warning('cannot import fb2, extracting fb2 metadata will not work: %s', e)
     use_fb2_meta = False
 
+import convert
+NEED_CONVERT_EXTENSIONS = ['.mobi', '.azw', '.azw3']
+
 
 def process(tmp_file_path, original_file_name, original_file_extension):
     meta = None
@@ -57,6 +60,8 @@ def process(tmp_file_path, original_file_name, original_file_extension):
             meta = fb2.get_fb2_info(tmp_file_path, original_file_extension)
         if original_file_extension.upper() in ['.CBZ', '.CBT']:
             meta = comic.get_comic_info(tmp_file_path, original_file_name, original_file_extension)
+        if original_file_extension.lower() in NEED_CONVERT_EXTENSIONS:
+            meta = convert.get_meta_info(tmp_file_path, original_file_name, original_file_extension)
 
     except Exception as ex:
         logger.warning('cannot parse metadata, using default: %s', ex)
