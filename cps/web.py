@@ -3904,10 +3904,10 @@ def upload():
                     flash(
                         _("File extension '%(ext)s' is not allowed to be uploaded to this server",
                           ext=file_ext), category="error")
-                    return redirect(url_for('index'))
+                    return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
             else:
                 flash(_('File to be uploaded must have an extension'), category="error")
-                return redirect(url_for('index'))
+                return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
                 
             # extract metadata from file
             meta = uploader.upload(requested_file)
@@ -3928,12 +3928,12 @@ def upload():
                     os.makedirs(filepath)
                 except OSError:
                     flash(_(u"Failed to create path %(path)s (Permission denied).", path=filepath), category="error")
-                    return redirect(url_for('index'))
+                    return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
             try:
                 copyfile(meta.file_path, saved_filename)
             except OSError:
                 flash(_(u"Failed to store file %(file)s (Permission denied).", file=saved_filename), category="error")
-                return redirect(url_for('index'))
+                return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
             try:
                 os.unlink(meta.file_path)
             except OSError:
@@ -4047,12 +4047,15 @@ def upload():
             if len(request.files.getlist("btn-upload")) < 2:
                 cc = db.session.query(db.Custom_Columns).filter(db.Custom_Columns.datatype.notin_(db.cc_exceptions)).all()
                 if current_user.role_edit() or current_user.role_admin():
-                    return render_title_template('book_edit.html', book=book, authors=author_names,
-                                                 cc=cc, title=_(u"edit metadata"), page="upload")
-                book_in_shelfs = []
-                return render_title_template('detail.html', entry=book, cc=cc,
-                                             title=book.title, books_shelfs=book_in_shelfs, page="upload")
-    return redirect(url_for("index"))
+                    resp = {
+                        "location": url_for('edit_book', book_id=db_book.id)
+                    }
+                    return Response(json.dumps(resp), mimetype='application/json')
+                resp = {
+                    "location": url_for('show_book', book_id=db_book.id)
+                }
+                return Response(json.dumps(resp), mimetype='application/json')
+    return Response(json.dumps({"location": url_for("index")}), mimetype='application/json')
 
 
 @app.route("/admin/book/convert/<int:book_id>", methods=['POST'])
